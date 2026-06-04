@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Yettel Srbija prijava",
+        "description": "Unesi podatke za prijavu na Yettel nalog.",
+        "data": {
+          "username": "Broj telefona ili e-mail",
+          "password": "Lozinka",
+          "pin": "PIN (kreiran u Yettel aplikaciji)"
+        }
+      },
+      "2fa": {
+        "title": "Dvofaktorska verifikacija",
+        "description": "Unesi kod koji je stigao SMS-om. Uređaj će biti zapamćen pa se kod neće tražiti ubuduće.",
+        "data": {
+          "otp_code": "SMS kod"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Pogrešno korisničko ime ili lozinka.",
+      "invalid_otp": "Pogrešan ili istekao SMS kod.",
+      "invalid_pin": "Pogrešan PIN.",
+      "cannot_connect": "Ne mogu da se povežem na Yettel servis.",
+      "unknown": "Došlo je do nepoznate greške."
+    },
+    "abort": {
+      "already_configured": "Ovaj broj je već dodat.",
+      "no_accounts": "Nije pronađen nijedan broj na nalogu."
+    }
+  }
+}

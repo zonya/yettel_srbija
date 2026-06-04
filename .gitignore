@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.cookies
+.yettel_srbija_*.cookies
+.DS_Store
