@@ -17,31 +17,15 @@
 
 type: vertical-stack
 cards:
-  # ── Naslov + status računa (klik → detalji računa) ────────────
   - type: custom:mushroom-template-card
-    primary: 📱 {{ state_attr('sensor.yettel_marko_trenutno_stanje', 'tarifa') | default('Yettel', true) }}
-    secondary: >-
-      {% set s = states('sensor.yettel_marko_status_racuna') %}
-      {% if s == 'nije_placen' %}
-        Дуг: {{ states('sensor.yettel_marko_iznos_racuna') }} РСД · рок {{ states('sensor.yettel_marko_rok_placanja') }}
-      {% elif s == 'placen' %}
-        Рачун плаћен
-      {% else %}
-        {{ s }}
-      {% endif %}
-    icon: >-
-      {% set s = states('sensor.yettel_marko_status_racuna') %}
-      {{ 'mdi:alert-circle' if s == 'nije_placen' else 'mdi:check-circle' }}
-    icon_color: >-
-      {% set s = states('sensor.yettel_marko_status_racuna') %}
-      {{ 'red' if s == 'nije_placen' else 'green' }}
+    primary: "📱 {{ state_attr('sensor.yettel_marko_trenutno_stanje', 'tarifa') | default('Yettel', true) }}"
+    secondary: "{% set s = states('sensor.yettel_marko_status_racuna') %}{% if s == 'nije_placen' %}Дуг: {{ states('sensor.yettel_marko_iznos_racuna') }} РСД · рок {{ states('sensor.yettel_marko_rok_placanja') }}{% elif s == 'placen' %}Рачун плаћен{% else %}{{ s }}{% endif %}"
+    icon: "{% if states('sensor.yettel_marko_status_racuna') == 'nije_placen' %}mdi:alert-circle{% else %}mdi:check-circle{% endif %}"
+    icon_color: "{% if states('sensor.yettel_marko_status_racuna') == 'nije_placen' %}red{% else %}green{% endif %}"
     entity: sensor.yettel_marko_iznos_racuna
     tap_action:
       action: more-info
     multiline_secondary: true
-
-  # ── Detalji: stanje / internet / minuti / sms / roming ────────
-  #     (svaka pločica → klik otvara svoj more-info popup)
   - type: grid
     columns: 2
     square: false
@@ -54,7 +38,6 @@ cards:
         entity: sensor.yettel_marko_trenutno_stanje
         tap_action:
           action: more-info
-
       - type: custom:mushroom-template-card
         primary: Интернет
         secondary: "{{ states('sensor.yettel_marko_internet') }}"
@@ -63,7 +46,6 @@ cards:
         entity: sensor.yettel_marko_internet
         tap_action:
           action: more-info
-
       - type: custom:mushroom-template-card
         primary: Минути
         secondary: "{{ states('sensor.yettel_marko_minuti') }}"
@@ -72,7 +54,6 @@ cards:
         entity: sensor.yettel_marko_minuti
         tap_action:
           action: more-info
-
       - type: custom:mushroom-template-card
         primary: SMS
         secondary: "{{ states('sensor.yettel_marko_sms_poruke') }}"
@@ -81,7 +62,6 @@ cards:
         entity: sensor.yettel_marko_sms_poruke
         tap_action:
           action: more-info
-
       - type: custom:mushroom-template-card
         primary: Роминг
         secondary: "{{ states('sensor.yettel_marko_roming_internet') }} GB"
@@ -90,7 +70,6 @@ cards:
         entity: sensor.yettel_marko_roming_internet
         tap_action:
           action: more-info
-
       - type: custom:mushroom-template-card
         primary: Зап. Балкан
         secondary: "{{ states('sensor.yettel_marko_zapadni_balkan_internet') }} GB"
