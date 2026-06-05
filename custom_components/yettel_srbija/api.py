@@ -5,7 +5,22 @@ from typing import Any
 
 import aiohttp
 
-from .const import NALOG_BASE, API_BASE
+from .const import (
+    NALOG_BASE,
+    API_BASE,
+    OAUTH_INIT,
+    OAUTH_VALIDATE_TEMP,
+    API_ID,
+    APP_ID,
+    APP_VERSION,
+    API_VERSION,
+    HDR_API_ID,
+    HDR_APP_ID,
+    HDR_APP_VERSION,
+    HDR_API_VERSION,
+    HDR_TOKEN,
+    HDR_PIN_TOKEN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +51,25 @@ class YettelApiError(Exception):
 class YettelApi:
     def __init__(self, session: aiohttp.ClientSession) -> None:
         self._session = session
+        self._api_token: str | None = None
+        self._pin_token: str | None = None
+
+    # ------------------------------------------------------------------
+    # Headeri za api.yettel.rs (PWA API ne koristi kolačiće za auth)
+    # ------------------------------------------------------------------
+
+    def _api_headers(self) -> dict[str, str]:
+        h = {
+            HDR_API_ID: API_ID,
+            HDR_APP_ID: APP_ID,
+            HDR_APP_VERSION: APP_VERSION,
+            HDR_API_VERSION: API_VERSION,
+        }
+        if self._api_token:
+            h[HDR_TOKEN] = self._api_token
+        if self._pin_token:
+            h[HDR_PIN_TOKEN] = self._pin_token
+        return h
 
     # ------------------------------------------------------------------
     # Auth
@@ -51,19 +85,25 @@ class YettelApi:
 
     async def begin_login(self, username: str, password: str) -> bool:
         """Korak 1: CSRF + login. Vraća True ako je potrebna 2FA."""
-        csrf_name, csrf_value = await self._get_csrf()
         try:
-            await self._post_login(csrf_name, csrf_value, username, password)
-        except YettelAuthError as err:
-            if "2FA_REQUIRED" in str(err):
-                return True
+            csrf_name, csrf_value = await self._get_csrf()
+            try:
+                await self._post_login(csrf_name, csrf_value, username, password)
+            except YettelAuthError as err:
+                if "2FA_REQUIRED" in str(err):
+                    return True
+                raise
+            return False
+        except (YettelAuthError, YettelApiError):
             raise
-        return False
+        except aiohttp.ClientError as err:
+            raise YettelApiError(f"Mrežna greška: {err}") from err
 
     async def finish_login(self, pin: str) -> str:
-        """Korak 2: OAuth + PIN. Vraća tokenPin."""
-        await self._exchange_oauth()
-        return await self._validate_pin(pin)
+        """Korak 2: OAuth lanac (api token) + PIN. Vraća tokenPin."""
+        self._api_token = await self._exchange_oauth()
+        self._pin_token = await self._validate_pin(pin)
+        return self._pin_token
 
     async def _get_csrf(self) -> tuple[str, str]:
         async with self._session.get(
@@ -97,34 +137,70 @@ class YettelApi:
             if "2fa" in url:
                 raise YettelAuthError("2FA_REQUIRED")
 
-    async def _exchange_oauth(self) -> None:
-        params = {
-            "client_id": "pwa-new",
-            "scope": "user_msisdn ftth_info user_info",
-            "response_type": "code",
-            "state": "ha_yettel_state",
-            "redirect_uri": f"{API_BASE.replace('/api', '')}/api/pwa/login/authorize-back",
-            "lang": "sr",
-        }
+    async def _exchange_oauth(self) -> str:
+        """Pun OAuth lanac → vraća X-Yettel-Api-Token (JWT).
+
+        1. GET /pwa/login/init → 302 na /nalog/api/auth (server upiše state u
+           api PHPSESSID; OBAVEZNO — bez ovoga authorize-back vraća 403).
+        2. GET auth URL (već ulogovan na nalog) → HTML sa JS redirektom na
+           authorize-back?code=...&state=...
+        3. GET authorize-back → 302 na PWA: .../#/login/<tempToken>
+        4. POST /pwa/login/validate-temp-token (tempToken) → data.data.token
+        """
+        # 1) init
         async with self._session.get(
-            f"{NALOG_BASE}/api/auth",
-            params=params,
-            allow_redirects=True,
+            f"{API_BASE}{OAUTH_INIT}",
+            headers=self._api_headers(),
+            allow_redirects=False,
         ) as r:
-            if r.status not in (200, 302):
-                raise YettelApiError(f"OAuth HTTP {r.status}")
+            auth_url = r.headers.get("Location")
+            if not auth_url:
+                raise YettelApiError(f"login/init bez redirekta (HTTP {r.status})")
+
+        # 2) auth → JS redirect HTML
+        async with self._session.get(auth_url, allow_redirects=False) as r:
+            html = await r.text()
+        m = re.search(r'window\.location\.href\s*=\s*"([^"]+)"', html)
+        if not m:
+            raise YettelApiError("OAuth: authorize-back URL nije pronađen")
+        back_url = m.group(1).replace("&amp;", "&")
+
+        # 3) authorize-back → redirect na PWA sa tempToken-om
+        async with self._session.get(back_url, allow_redirects=False) as r:
+            loc = r.headers.get("Location", "")
+        mt = re.search(r"#/login/([0-9a-fA-F]+)", loc)
+        if not mt:
+            raise YettelApiError("OAuth: tempToken nije pronađen (login neuspešan)")
+        temp_token = mt.group(1)
+
+        # 4) validate-temp-token → pravi api token
+        async with self._session.post(
+            f"{API_BASE}{OAUTH_VALIDATE_TEMP}",
+            data={"tempToken": temp_token},
+            headers=self._api_headers(),
+        ) as r:
+            if r.status != 200:
+                raise YettelApiError(f"validate-temp-token HTTP {r.status}")
+            data = await r.json(content_type=None)
+        inner = data.get("data", {})
+        token = inner.get("token")
+        if not inner.get("success") or not token:
+            raise YettelApiError("validate-temp-token nije vratio token")
+        return token
 
     async def _validate_pin(self, pin: str) -> str:
         async with self._session.post(
             f"{API_BASE}/pwa/services/validate-pin",
             data={"pin": pin},
+            headers=self._api_headers(),
         ) as r:
             if r.status != 200:
                 raise YettelPinError(f"PIN HTTP {r.status}")
             data = await r.json(content_type=None)
-            token_pin = data.get("data", {}).get("tokenPin")
-            if not token_pin:
-                raise YettelPinError("tokenPin nije vraćen")
+            inner = data.get("data", {})
+            token_pin = inner.get("tokenPin")
+            if not inner.get("success", True) or not token_pin:
+                raise YettelPinError("tokenPin nije vraćen (pogrešan PIN?)")
             return token_pin
 
     # ------------------------------------------------------------------
@@ -132,8 +208,13 @@ class YettelApi:
     # ------------------------------------------------------------------
 
     async def get_home(self) -> dict:
-        """Dohvata /index/home. Vraća {} ako token istekao (has_pin)."""
-        async with self._session.get(f"{API_BASE}/index/home") as r:
+        """Dohvata /index/home. Vraća {} ako je sesija/token istekla."""
+        async with self._session.get(
+            f"{API_BASE}/index/home", headers=self._api_headers()
+        ) as r:
+            # 401/403 = istekao api token; has_pin = istekao pin token → re-login
+            if r.status in (401, 403):
+                return {}
             if r.status != 200:
                 raise YettelApiError(f"home HTTP {r.status}")
             data = await r.json(content_type=None)
@@ -146,17 +227,21 @@ class YettelApi:
         async with self._session.get(
             f"{API_BASE}/pages/resource-bills-history",
             params={"identifier": msisdn},
+            headers=self._api_headers(),
         ) as r:
             if r.status != 200:
                 return []
             data = await r.json(content_type=None)
+        # Vraća listu items-a; svaki item ima 'elements' sa smallMonthlyInvoice.
+        # parse_latest_bill() prolazi kroz items i traži najnoviji račun.
+        items: list[dict] = []
         try:
-            items = (
-                data["data"]["pages"][0]["groups"][0]["items"][0]["elements"][0]
-            )
-            return items if isinstance(items, list) else []
+            for page in data["data"]["pages"]:
+                for group in page.get("groups", []):
+                    items.extend(group.get("items", []))
         except (KeyError, IndexError, TypeError):
             return []
+        return items
 
     async def get_account_list(self, home_data: dict) -> list[dict]:
         """Izvlači listu dostupnih brojeva iz home podataka."""

@@ -55,9 +55,11 @@ class YettelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             except YettelAuthError:
                 errors["base"] = "invalid_auth"
-            except YettelApiError:
+            except YettelApiError as err:
+                _LOGGER.error("Yettel cannot_connect: %s", err)
                 errors["base"] = "cannot_connect"
             except Exception:  # noqa: BLE001
+                _LOGGER.exception("Yettel begin_login neočekivana greška")
                 errors["base"] = "unknown"
             else:
                 if needs_2fa:
@@ -81,6 +83,7 @@ class YettelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except YettelAuthError:
                 errors["base"] = "invalid_otp"
             except Exception:  # noqa: BLE001
+                _LOGGER.exception("Yettel 2FA neočekivana greška")
                 errors["base"] = "unknown"
             else:
                 return await self._finalize()
@@ -96,7 +99,8 @@ class YettelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             home = await self._api.get_home()
             accounts = await self._api.get_account_list(home)
             primary = self._api.get_primary_account(accounts)
-        except YettelPinError:
+        except YettelPinError as err:
+            _LOGGER.error("Yettel PIN greška: %s", err)
             await self._cleanup_session()
             return self.async_show_form(
                 step_id="user",
@@ -104,6 +108,7 @@ class YettelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "invalid_pin"},
             )
         except Exception:  # noqa: BLE001
+            _LOGGER.exception("Yettel _finalize neočekivana greška")
             await self._cleanup_session()
             return self.async_show_form(
                 step_id="user",
