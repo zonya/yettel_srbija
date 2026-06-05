@@ -21,6 +21,7 @@ HDR_APP_VERSION = "X-Yettel-App-Version"
 HDR_API_VERSION = "X-Yettel-Api-Version"
 HDR_TOKEN = "X-Yettel-Api-Token"
 HDR_PIN_TOKEN = "X-Yettel-Api-Pin-Token"
+HDR_SLAVE = "X-Yettel-Identifier-Slave"  # za prebacivanje na drugi nalog (TV/optika/prepaid)
 
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"

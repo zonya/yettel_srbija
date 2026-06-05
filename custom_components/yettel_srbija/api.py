@@ -20,6 +20,7 @@ from .const import (
     HDR_API_VERSION,
     HDR_TOKEN,
     HDR_PIN_TOKEN,
+    HDR_SLAVE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ class YettelApi:
     # Headeri za api.yettel.rs (PWA API ne koristi kolačiće za auth)
     # ------------------------------------------------------------------
 
-    def _api_headers(self) -> dict[str, str]:
+    def _api_headers(self, slave: str | None = None) -> dict[str, str]:
         h = {
             HDR_API_ID: API_ID,
             HDR_APP_ID: APP_ID,
@@ -69,6 +70,8 @@ class YettelApi:
             h[HDR_TOKEN] = self._api_token
         if self._pin_token:
             h[HDR_PIN_TOKEN] = self._pin_token
+        if slave:
+            h[HDR_SLAVE] = slave
         return h
 
     # ------------------------------------------------------------------
@@ -207,10 +210,11 @@ class YettelApi:
     # Podaci
     # ------------------------------------------------------------------
 
-    async def get_home(self) -> dict:
-        """Dohvata /index/home. Vraća {} ako je sesija/token istekla."""
+    async def get_home(self, slave: str | None = None) -> dict:
+        """Dohvata /index/home. slave = identifikator drugog naloga (TV/optika/prepaid).
+        Vraća {} ako je sesija/token istekla."""
         async with self._session.get(
-            f"{API_BASE}/index/home", headers=self._api_headers()
+            f"{API_BASE}/index/home", headers=self._api_headers(slave)
         ) as r:
             # 401/403 = istekao api token; has_pin = istekao pin token → re-login
             if r.status in (401, 403):

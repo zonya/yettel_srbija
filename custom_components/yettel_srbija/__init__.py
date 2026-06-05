@@ -87,8 +87,17 @@ def _register_services(hass: HomeAssistant) -> None:
                     await api.login(entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD], entry.data[CONF_PIN])
                     home = await api.get_home()
                 accounts = await api.get_account_list(home)
-                extra = await api.probe_fixed(call.data.get("paths"))
-                out[label] = {"accounts": accounts, "home": home, "probe": extra}
+                # povuci home za SVAKI nalog (TV/optika/prepaid) preko slave headera
+                homes: dict = {}
+                for acc in accounts:
+                    val = acc.get("value")
+                    if not val:
+                        continue
+                    try:
+                        homes[val] = await api.get_home(slave=val)
+                    except Exception as exc:  # noqa: BLE001
+                        homes[val] = {"error": f"{type(exc).__name__}: {exc}"}
+                out[label] = {"accounts": accounts, "home_primary": home, "homes": homes}
             except Exception as exc:  # noqa: BLE001
                 out[label] = {"error": f"{type(exc).__name__}: {exc}"}
         return out
