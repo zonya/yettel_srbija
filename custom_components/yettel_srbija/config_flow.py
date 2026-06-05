@@ -6,6 +6,8 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 
+from homeassistant.core import callback
+
 from .api import YettelApi, YettelAuthError, YettelPinError, YettelApiError
 from .const import (
     DOMAIN,
@@ -14,6 +16,7 @@ from .const import (
     CONF_PIN,
     CONF_MSISDN,
     CONF_TARIFF,
+    CONF_NICKNAME,
     USER_AGENT,
     cookie_path,
 )
@@ -25,6 +28,7 @@ USER_SCHEMA = vol.Schema(
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
         vol.Required(CONF_PIN): str,
+        vol.Optional(CONF_NICKNAME, default=""): str,
     }
 )
 
@@ -142,11 +146,38 @@ class YettelConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._data[CONF_MSISDN] = msisdn
         self._data[CONF_TARIFF] = tariff
 
+        nadimak = (self._data.get(CONF_NICKNAME) or "").strip()
+        title = f"{nadimak} {tariff}".strip() if nadimak else f"{tariff} ({msisdn})"
+
         return self.async_create_entry(
-            title=f"{tariff} ({msisdn})",
+            title=title,
             data=self._data,
         )
 
     async def _cleanup_session(self):
         if self._session and not self._session.closed:
             await self._session.close()
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return YettelOptionsFlow(config_entry)
+
+
+class YettelOptionsFlow(config_entries.OptionsFlow):
+    """Omogućava izmenu nadimka bez ponovnog dodavanja integracije."""
+
+    def __init__(self, config_entry) -> None:
+        self._entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = self._entry.options.get(
+            CONF_NICKNAME, self._entry.data.get(CONF_NICKNAME, "")
+        )
+        schema = vol.Schema(
+            {vol.Optional(CONF_NICKNAME, default=current): str}
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

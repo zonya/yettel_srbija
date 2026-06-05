@@ -18,7 +18,7 @@
 type: vertical-stack
 cards:
   - type: custom:mushroom-template-card
-    primary: "📱 {{ state_attr('sensor.yettel_marko_trenutno_stanje', 'tarifa') | default('Yettel', true) }}"
+    primary: "📱 {{ state_attr('sensor.yettel_marko_trenutno_stanje', 'naziv') | default('Yettel', true) }}"
     secondary: "{% set s = states('sensor.yettel_marko_status_racuna') %}{% if s == 'nije_placen' %}Дуг: {{ states('sensor.yettel_marko_iznos_racuna') }} РСД · рок {{ states('sensor.yettel_marko_rok_placanja') }}{% elif s == 'placen' %}Рачун плаћен{% else %}{{ s }}{% endif %}"
     icon: "{% if states('sensor.yettel_marko_status_racuna') == 'nije_placen' %}mdi:alert-circle{% else %}mdi:check-circle{% endif %}"
     icon_color: "{% if states('sensor.yettel_marko_status_racuna') == 'nije_placen' %}red{% else %}green{% endif %}"

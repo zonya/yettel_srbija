@@ -7,7 +7,8 @@
         "data": {
           "username": "Broj telefona ili e-mail",
           "password": "Lozinka",
-          "pin": "PIN (kreiran u Yettel aplikaciji)"
+          "pin": "PIN (kreiran u Yettel aplikaciji)",
+          "nadimak": "Nadimak (opciono, npr. Marko)"
         }
       },
       "2fa": {
@@ -28,6 +29,17 @@
     "abort": {
       "already_configured": "Ovaj broj je već dodat.",
       "no_accounts": "Nije pronađen nijedan broj na nalogu."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Yettel — podešavanja",
+        "description": "Nadimak se prikazuje na kartici (npr. „Marko Yettel Mobile M“).",
+        "data": {
+          "nadimak": "Nadimak"
+        }
+      }
     }
   }
 }

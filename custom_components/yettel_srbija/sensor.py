@@ -16,7 +16,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CONF_MSISDN, CONF_TARIFF
+from .const import DOMAIN, CONF_MSISDN, CONF_TARIFF, CONF_NICKNAME
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -112,9 +112,12 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     msisdn = entry.data.get(CONF_MSISDN, "")
     tariff = entry.data.get(CONF_TARIFF, "Yettel")
+    # nadimak: opcije imaju prednost (može se menjati posle dodavanja)
+    nadimak = (entry.options.get(CONF_NICKNAME, entry.data.get(CONF_NICKNAME, "")) or "").strip()
 
     entities = [
-        YettelSensor(coordinator, entry, desc, msisdn, tariff) for desc in SENSORS
+        YettelSensor(coordinator, entry, desc, msisdn, tariff, nadimak)
+        for desc in SENSORS
     ]
     async_add_entities(entities)
 
@@ -123,14 +126,18 @@ class YettelSensor(CoordinatorEntity, SensorEntity):
     entity_description: YettelSensorDescription
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry, description, msisdn, tariff) -> None:
+    def __init__(self, coordinator, entry, description, msisdn, tariff, nadimak="") -> None:
         super().__init__(coordinator)
         self.entity_description = description
         self._msisdn = msisdn
+        self._tariff = tariff
+        self._nadimak = nadimak
+        # Prikazni naziv za karticu: "Marko Yettel Mobile M" ili samo tarifa
+        self._naziv = f"{nadimak} {tariff}".strip() if nadimak else tariff
         self._attr_unique_id = f"{msisdn}_{description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, msisdn)},
-            name=f"Yettel {msisdn}",
+            name=f"Yettel {nadimak}".strip() if nadimak else f"Yettel {msisdn}",
             manufacturer="Yettel Srbija",
             model=tariff,
         )
@@ -151,5 +158,9 @@ class YettelSensor(CoordinatorEntity, SensorEntity):
                 "rok": data.get("bill_deadline"),
             }
         if self.entity_description.key == "balance":
-            return {"tarifa": data.get("tariff")}
+            return {
+                "tarifa": data.get("tariff") or self._tariff,
+                "nadimak": self._nadimak,
+                "naziv": self._naziv,
+            }
         return None

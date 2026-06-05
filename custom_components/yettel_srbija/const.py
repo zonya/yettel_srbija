@@ -27,6 +27,7 @@ CONF_PASSWORD = "password"
 CONF_PIN = "pin"
 CONF_MSISDN = "msisdn"
 CONF_TARIFF = "tariff"
+CONF_NICKNAME = "nadimak"
 
 # Yettel PWA očekuje pravi browser/mobilni User-Agent
 USER_AGENT = (
