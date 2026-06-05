@@ -324,6 +324,7 @@ class YettelApi:
         """Parsira home_data i vraća dict sa svim vrednostima za senzore."""
         result: dict[str, Any] = {
             "msisdn": msisdn,
+            "kind": "mobile",
             "balance": None,
             "tariff": None,
             "bill_amount": None,
@@ -336,6 +337,8 @@ class YettelApi:
             "wb_gb": None,
             "minutes_unlimited": False,
             "sms_unlimited": False,
+            "optical_speed": None,
+            "tv": None,
         }
 
         try:
@@ -392,6 +395,18 @@ class YettelApi:
                                             elif "balkan" in txt.lower() or "wb" in info.lower():
                                                 gb = v.get("val", 0) / (1024 ** 3)
                                                 result["wb_gb"] = round(gb, 2)
+
+                            elif etype == "item2ColLink":
+                                # fiksni nalog: optika / TV
+                                t1 = el.get("text1", "")
+                                t2 = el.get("text2", "")
+                                low = t1.lower()
+                                if "optič" in low or "optic" in low:
+                                    result["optical_speed"] = t2
+                                    result["kind"] = "fixed"
+                                elif "televiz" in low or "телев" in low:
+                                    result["tv"] = t1 or "Digitalna televizija"
+                                    result["kind"] = "fixed"
 
                             elif etype == "progressBar":
                                 info = el.get("additionalInfo", "")
