@@ -243,6 +243,23 @@ class YettelApi:
             return []
         return items
 
+    async def probe_fixed(self, paths: list[str] | None = None) -> dict:
+        """Dijagnostika: GET-uje kandidat-endpointe za fiksne usluge (optika/TV)
+        sa postojećim api headerima. Vraća {path: {status, body_snippet}}."""
+        if not paths:
+            paths = ["/self-service-menu", "/pages/settings", "/index/menu"]
+        result: dict = {}
+        for p in paths:
+            try:
+                async with self._session.get(
+                    f"{API_BASE}{p}", headers=self._api_headers()
+                ) as r:
+                    txt = await r.text()
+                    result[p] = {"status": r.status, "body": txt[:4000]}
+            except Exception as exc:  # noqa: BLE001
+                result[p] = {"error": str(exc)}
+        return result
+
     async def get_account_list(self, home_data: dict) -> list[dict]:
         """Izvlači listu dostupnih brojeva iz home podataka."""
         accounts = []

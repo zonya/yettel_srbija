@@ -1,0 +1,13 @@
+dump:
+  name: Dump (dijagnostika)
+  description: >-
+    Vraća sirov home + listu naloga za sve Yettel instance (za otkrivanje
+    fiksnih usluga — optika/TV). Koristi postojeću sesiju, ne traži novi SMS.
+  fields:
+    paths:
+      name: Putanje (opciono)
+      description: Lista dodatnih API putanja za probu (npr. ["/self-service-menu"]).
+      required: false
+      example: '["/self-service-menu"]'
+      selector:
+        object:
