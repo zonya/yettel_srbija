@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
+    SensorDeviceClass,
     SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
@@ -42,6 +43,7 @@ SENSORS: tuple[YettelSensorDescription, ...] = (
         key="balance",
         name="Trenutno stanje",
         native_unit_of_measurement="RSD",
+        device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
         icon="mdi:cash",
         value_fn=lambda d: d.get("balance"),
@@ -50,6 +52,7 @@ SENSORS: tuple[YettelSensorDescription, ...] = (
         key="bill_amount",
         name="Iznos računa",
         native_unit_of_measurement="RSD",
+        device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
         icon="mdi:file-document-outline",
         value_fn=lambda d: d.get("bill_amount"),
