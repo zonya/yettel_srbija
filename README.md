@@ -61,3 +61,10 @@ uređaj se pamti (`rememberDevice`) i kod se ne traži ubuduće.
 ## Napomena
 
 Nezvanična integracija. Nije povezana sa Yettel d.o.o. Koristi se na sopstvenu odgovornost.
+
+## ☕ Podrži
+
+Integracija je besplatna i nastaje u slobodno vreme. Ako ti je uštedela veče,
+možeš da [platiš kafu](https://ko-fi.com/zonya2026).
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/zonya2026)
