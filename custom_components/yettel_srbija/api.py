@@ -37,6 +37,29 @@ def _gb_from_text(text: str) -> float | None:
     return None
 
 
+def _parse_csrf(html: str) -> tuple[str, str] | None:
+    """Izvuče CSRF par sa stranice za prijavu.
+
+    Od oktobra 2026. stranica je Vue aplikacija i token stavlja u JS
+    (`window.csrf_name = '…'`); ranije je bio skriveni <input>. Podržana su oba.
+    """
+    for name_re, value_re in (
+        (
+            r"""(?<![\w.])(?:window\.)?csrf_name\s*=\s*['"]([^'"]+)['"]""",
+            r"""(?<![\w.])(?:window\.)?csrf_value\s*=\s*['"]([^'"]+)['"]""",
+        ),
+        (
+            r'name="csrf_name"\s+value="([^"]+)"',
+            r'name="csrf_value"\s+value="([^"]+)"',
+        ),
+    ):
+        name = re.search(name_re, html)
+        value = re.search(value_re, html)
+        if name and value:
+            return name.group(1), value.group(1)
+    return None
+
+
 class YettelAuthError(Exception):
     pass
 
@@ -114,11 +137,10 @@ class YettelApi:
             allow_redirects=True,
         ) as r:
             html = await r.text()
-        name = re.search(r'name="csrf_name"\s+value="([^"]+)"', html)
-        value = re.search(r'name="csrf_value"\s+value="([^"]+)"', html)
-        if not name or not value:
+        parsed = _parse_csrf(html)
+        if not parsed:
             raise YettelApiError("CSRF tokeni nisu pronađeni")
-        return name.group(1), value.group(1)
+        return parsed
 
     async def _post_login(
         self, csrf_name: str, csrf_value: str, username: str, password: str
